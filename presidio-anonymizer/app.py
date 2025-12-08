@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request
 from presidio_anonymizer import AnonymizerEngine, DeanonymizeEngine
-from presidio_anonymizer.entities import InvalidParamError
+from presidio_anonymizer.entities import InvalidParamError, OperatorConfig
 from presidio_anonymizer.services.app_entities_convertor import AppEntitiesConvertor
 from werkzeug.exceptions import BadRequest, HTTPException
 
@@ -49,7 +49,10 @@ class Server:
 
                 text = content.get("text", "")
                 analyzer_results_json = content.get("analyzer_results", [])
-                anonymizers_json = content.get("anonymizers", {})
+                anonymizers_json = {
+                    "PERSON": OperatorConfig("genz"),
+                    "PHONE_NUMBER": OperatorConfig("genz")
+                }
 
                 analyzer_results = (
                     AppEntitiesConvertor.analyzer_results_from_json(
