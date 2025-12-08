@@ -13,6 +13,12 @@ MULTIPART_HEADERS = {"Content-Type": "multipart/form-data"}
 ANONYMIZER_BASE_URL = os.environ.get("ANONYMIZER_BASE_URL", ANONYMIZER_BASE_URL)
 
 
+def genz(data):
+    response = requests.post(
+        f"{ANONYMIZER_BASE_URL}/genz", data=data, headers=DEFAULT_HEADERS
+    )
+    return response.status_code, response.content
+
 def anonymize(data):
     response = requests.post(
         f"{ANONYMIZER_BASE_URL}/anonymize", data=data, headers=DEFAULT_HEADERS

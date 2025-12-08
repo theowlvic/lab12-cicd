@@ -39,39 +39,43 @@ class Server:
         self.anonymizer = AnonymizerEngine()
         self.deanonymize = DeanonymizeEngine()
         self.logger.info(WELCOME_MESSAGE)
-        @self.app.route("/genz")
+        @self.app.route("/genz", methods=["POST"])
         def genz() -> Response:
             """Return gen-z anonymization output."""
-            text = (
-                "Please contact Emily Carter at 734-555-9284 if you have "
-                "questions about the workshop registration."
-            )
-            analyzer_results = AppEntitiesConvertor.analyzer_results_from_json([
-                {
-                    "start": 15,
-                    "end": 27,
-                    "score": 0.3,
-                    "entity_type": "PERSON"
-                },
-                {
-                    "start": 31,
-                    "end": 43,
-                    "score": 0.95,
-                    "entity_type": "PHONE_NUMBER"
-                }
-            ])
-            # Use GenZ anonymizer for all entity types
-            anonymizers_config = {
-                "PERSON": OperatorConfig("genz", {}),
-                "PHONE_NUMBER": OperatorConfig("genz", {})
-            }
-            # Anonymize the text
-            anonymizer_result = self.anonymizer.anonymize(
-                text=text,
-                analyzer_results=analyzer_results,
-                operators=anonymizers_config
-            )
-            return Response(anonymizer_result.to_json(), mimetype="application/json")
+            try:
+                content = request.get_json()
+                if not content:
+                    raise BadRequest("Invalid request json")
+
+                text = content.get("text", "")
+                analyzer_results_json = content.get("analyzer_results", [])
+                anonymizers_json = content.get("anonymizers", {})
+
+                analyzer_results = (
+                    AppEntitiesConvertor.analyzer_results_from_json(
+                        analyzer_results_json
+                    )
+                )
+                anonymizers_config = (
+                    AppEntitiesConvertor.operators_config_from_json(
+                        anonymizers_json
+                    )
+                )
+
+                # Anonymize the text using the provided configuration
+                anonymizer_result = self.anonymizer.anonymize(
+                    text=text,
+                    analyzer_results=analyzer_results,
+                    operators=anonymizers_config,
+                )
+
+                return Response(
+                    anonymizer_result.to_json(),
+                    mimetype="application/json"
+                )
+            except Exception as e:
+                self.logger.error(f"Error in /genz endpoint: {str(e)}")
+                raise
         @self.app.route("/health")
         def health() -> str:
             """Return basic health probe result."""
