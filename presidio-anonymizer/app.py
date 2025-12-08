@@ -42,7 +42,10 @@ class Server:
         @self.app.route("/genz")
         def genz() -> Response:
             """Return gen-z anonymization output."""
-            text="Please contact Emily Carter at 734-555-9284 if you have questions about the workshop registration."
+            text = (
+                "Please contact Emily Carter at 734-555-9284 if you have "
+                "questions about the workshop registration."
+            )
             analyzer_results = AppEntitiesConvertor.analyzer_results_from_json([
                 {
                     "start": 15,
