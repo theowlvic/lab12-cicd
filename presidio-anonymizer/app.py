@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request
 from presidio_anonymizer import AnonymizerEngine, DeanonymizeEngine
-from presidio_anonymizer.entities import InvalidParamError
+from presidio_anonymizer.entities import InvalidParamError, OperatorConfig
 from presidio_anonymizer.services.app_entities_convertor import AppEntitiesConvertor
 from werkzeug.exceptions import BadRequest, HTTPException
 
@@ -40,20 +40,56 @@ class Server:
         self.deanonymize = DeanonymizeEngine()
         self.logger.info(WELCOME_MESSAGE)
 
+        @self.app.route("/genz")
+        def genz() -> Response:
+            """Return gen-z anonymization output."""
+            text = "Please contact Emily Carter at 734-555-9284 if you have questions about the workshop registration."
+            
+            analyzer_results = AppEntitiesConvertor.analyzer_results_from_json([
+                {
+                    "start": 15,
+                    "end": 27,
+                    "score": 0.3,
+                    "entity_type": "PERSON"
+                },
+                {
+                    "start": 31,
+                    "end": 43,
+                    "score": 0.95,
+                    "entity_type": "PHONE_NUMBER"
+                }
+            ])
+            
+            # Use GenZ anonymizer for all entity types
+            anonymizers_config = {
+                "PERSON": OperatorConfig("genz", {}),
+                "PHONE_NUMBER": OperatorConfig("genz", {})
+            }
+            
+            # Anonymize the text
+            anonymizer_result = self.anonymizer.anonymize(
+                text=text,
+                analyzer_results=analyzer_results,
+                operators=anonymizers_config
+            )
+            
+            return Response(anonymizer_result.to_json(), mimetype="application/json")
+
         @self.app.route("/health")
         def health() -> str:
-            """Return a Gen-Z anonymization output"""
+            """Return basic health probe result."""
             return "Presidio Anonymizer service is up"
+            
         @self.app.route("/genz-preview")
         def genz_preview() -> str:
-            """Return basic health probe result."""
-            genz_anonymizer_result = {
+            """Return a sample Gen-Z anonymization output"""
+            genz_review_anonymizer_result = {
                 "example": "Call Emily at 577-988-1234",
                 "example output": "Call GOAT at vibe check",
                 "description": "Example output of the genz anonymizer."
                 }
-            genz_in_json = jsonify(genz_anonymizer_result)
-            return genz_in_json
+            genz_review_in_json = jsonify(genz_review_anonymizer_result)
+            return genz_review_in_json
 
         @self.app.route("/anonymize", methods=["POST"])
         def anonymize() -> Response:
