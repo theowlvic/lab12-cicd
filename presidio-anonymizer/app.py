@@ -82,7 +82,7 @@ class Server:
             
         @self.app.route("/genz-preview")
         def genz_preview() -> str:
-            """Return a sample Gen-Z anonymization output"""
+            """Return a sample Gen-Z anonymization output."""
             genz_review_anonymizer_result = {
                 "example": "Call Emily at 577-988-1234",
                 "example output": "Call GOAT at vibe check",
