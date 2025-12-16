@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request
 from presidio_anonymizer import AnonymizerEngine, DeanonymizeEngine
-from presidio_anonymizer.entities import InvalidParamError, OperatorConfig
+from presidio_anonymizer.entities import InvalidParamError
 from presidio_anonymizer.services.app_entities_convertor import AppEntitiesConvertor
 from werkzeug.exceptions import BadRequest, HTTPException
 
@@ -40,32 +40,32 @@ class Server:
         self.deanonymize = DeanonymizeEngine()
         self.logger.info(WELCOME_MESSAGE)
         @self.app.route("/genz", methods=["POST"])
-        def genz() -> Response:
+        def genz():
             """Return gen-z anonymization output."""
             try:
                 content = request.get_json()
                 if not content:
                     raise BadRequest("Invalid request json")
-
                 text = content.get("text", "")
                 analyzer_results_json = content.get("analyzer_results", [])
-                anonymizers_json = {
-                    "PERSON": OperatorConfig("genz"),
-                    "PHONE_NUMBER": OperatorConfig("genz")
-                }
-
+                # Build anonymizers JSON in the correct format
+                anonymizers_json = {}
+                for result in analyzer_results_json:
+                    entity_type = result.get("entity_type")
+                    if entity_type:
+                        anonymizers_json[entity_type] = {"type": "genz"}
+                # Convert using the same method as /anonymize endpoint
+                anonymizers_config = AppEntitiesConvertor.operators_config_from_json(
+                    anonymizers_json
+                )
+                # Convert analyzer results to internal format
                 analyzer_results = (
                     AppEntitiesConvertor.analyzer_results_from_json(
                         analyzer_results_json
                     )
                 )
-                anonymizers_config = (
-                    AppEntitiesConvertor.operators_config_from_json(
-                        anonymizers_json
-                    )
-                )
 
-                # Anonymize the text using the provided configuration
+                # Anonymize using the genz operator
                 anonymizer_result = self.anonymizer.anonymize(
                     text=text,
                     analyzer_results=analyzer_results,
@@ -76,8 +76,11 @@ class Server:
                     anonymizer_result.to_json(),
                     mimetype="application/json"
                 )
+            except InvalidParamError as e:
+                self.logger.warning(f"Invalid parameter in /genz: {e.err_msg}")
+                raise
             except Exception as e:
-                self.logger.error(f"Error in /genz endpoint: {str(e)}")
+                self.logger.error(f"Error in /genz endpoint: {str(e)}", exc_info=True)
                 raise
         @self.app.route("/health")
         def health() -> str:
